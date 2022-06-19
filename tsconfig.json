@@ -1,0 +1,23 @@
+{
+	"compilerOptions": {
+	  "module": "CommonJS",
+	  "resolveJsonModule": true,
+	  "esModuleInterop": true,
+	  "target": "ES6",
+	  "moduleResolution": "node",
+	  "sourceMap": true,
+	  "outDir": "dist",
+	  "lib": ["es2018", "dom", "esnext.asynciterable"],
+	  "allowSyntheticDefaultImports": true,
+	  "experimentalDecorators": true,
+	  "emitDecoratorMetadata": true,
+	  "declaration": true,
+	  "types": ["jest", "node"],
+	  "baseUrl": ".",
+	  "paths": {},
+	  "jsx": "react",
+	  "allowJs": true
+	},
+	"include": ["./src"],
+	"exclude": ["**/node_modules", "**/jest.config.js", "**/*.test.ts"]
+}

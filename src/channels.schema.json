@@ -1,0 +1,310 @@
+{
+  "$id": "https://ftlab.utu.fi/lab/schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "64": {
+      "type": "array",
+      "title": "Sources",
+      "items": {
+        "type": "string"
+      },
+      "component": "SourceMenu"
+    },
+    "65": {
+      "type": "array",
+      "minLength": 3,
+      "maxLength": 3,
+      "title": "Calibration",
+      "component": "Calibration",
+      "editable": "virtual",
+      "prefixItems": [
+        {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number",
+              "title": "Focal X"
+            },
+            {
+              "type": "number",
+              "title": "Focal Y"
+            },
+            {
+              "type": "number",
+              "title": "Principle Point X"
+            },
+            {
+              "type": "number",
+              "title": "Principle Point Y"
+            },
+            {
+              "type": "number",
+              "title": "Width"
+            },
+            {
+              "type": "number",
+              "title": "Height"
+            },
+            {
+              "type": "number",
+              "title": "Minimum Depth"
+            },
+            {
+              "type": "number",
+              "title": "Maximum Depth"
+            },
+            {
+              "type": "number",
+              "title": "Baseline"
+            },
+            {
+              "type": "number",
+              "title": "Disparity Offset"
+            }
+          ]
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ]
+    },
+    "66": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "title": "Pose",
+      "editable": "movable"
+    },
+    "69": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Control"
+    },
+    "71": {
+      "title": "Meta Data",
+      "type": "object",
+      "properties": {
+        "device": {
+          "type": "string",
+          "title": "Device"
+        },
+        "uri": {
+          "type": "string",
+          "title": "URI"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name"
+        }
+      },
+      "additionalProperties": true,
+      "component": "Metadata"
+    },
+    "72": {
+      "title": "Capabilities",
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "component": "Capabilities"
+    },
+    "73": {
+      "title": "Calibration Data"
+    },
+    "74": {
+      "title": "Thumbnail",
+      "type": "string",
+      "contentMediaType": "image/jpg",
+      "component": "Image"
+    },
+    "100": {
+      "type": "number",
+      "title": "Brightness",
+      "default": 100,
+      "component": "EditableValue",
+      "editable": true
+    },
+    "101": {
+      "type": "number",
+      "title": "Contrast",
+      "default": 100,
+      "component": "EditableValue",
+      "editable": true
+    },
+    "102": {
+      "type": "number",
+      "title": "Exposure",
+      "default": 100,
+      "component": "EditableValue",
+      "editable": true
+    },
+    "103": {
+      "type": "number",
+      "title": "Gain",
+      "default": 100,
+      "component": "EditableValue",
+      "editable": true
+    },
+    "104": {
+      "type": "number",
+      "title": "White Balance",
+      "default": 100,
+      "component": "EditableValue",
+      "editable": true
+    },
+    "105": {
+      "type": "number",
+      "title": "Auto Exposure",
+      "default": 0,
+      "enum": [0, 1],
+      "labels": ["Disabled", "Enabled"],
+      "component": "Enumerated",
+      "editable": true
+    },
+    "106": {
+      "type": "number",
+      "title": "Auto White Balance",
+      "default": 0,
+      "enum": [0, 1],
+      "labels": ["Disabled", "Enabled"],
+      "component": "Enumerated",
+      "editable": true
+    },
+    "107": {
+      "type": "number",
+      "title": "Camera Temperature",
+      "default": 100,
+      "component": "RawValue"
+    },
+    "150": {
+      "type": "number",
+      "title": "Laser Power",
+      "default": 100,
+      "component": "EditableValue",
+      "editable": true
+    },
+    "151": {
+      "type": "number",
+      "title": "Minimum Distance",
+      "default": 0,
+      "component": "EditableValue",
+      "editable": true
+    },
+    "153": {
+      "type": "number",
+      "title": "Inter Camera Sync",
+      "default": 0,
+      "enum": [0, 1],
+      "labels": ["Disabled", "Enabled"],
+      "component": "Enumerated",
+      "editable": true
+    },
+    "154": {
+      "type": "number",
+      "title": "Post Sharpening",
+      "default": 0,
+      "component": "EditableValue",
+      "editable": true
+    },
+    "400": {
+      "type": "string",
+      "title": "Camera Mode",
+      "enum": ["360", "stereo", "normal", "tile"],
+      "editable": "virtual",
+      "component": "Enumerated"
+    },
+    "401": {
+      "type": "string",
+      "title": "Visualisation",
+      "enum": ["mesh", "pointcloud"],
+      "labels": ["Mesh", "Point Cloud"],
+      "editable": "virtual",
+      "component": "Enumerated"
+    },
+    "402": {
+      "type": "string",
+      "title": "Render Engine",
+      "enum": ["CUDA", "GL", "SKR"],
+      "editable": "virtual",
+      "component": "Enumerated"
+    },
+    "405": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 31,
+      "default": 0,
+      "title": "Renderer Overlay Channel",
+      "component": "Enumerated",
+      "enum": [0, 1],
+      "labels": ["None", "Depth"],
+      "editable": "virtual"
+    },
+    "407": {
+      "type": "array",
+      "title": "Renderer Sources",
+      "items": {
+        "type": "string"
+      },
+      "component": "SourceMenu",
+      "editable": "virtual"
+    },
+    "408": {
+      "type": "number",
+      "title": "Projection",
+      "enum": [0, 1, 2],
+      "default": 0,
+      "component": "Enumerated",
+      "editable": "virtual"
+    },
+    "409": {
+      "type": "string",
+      "title": "Background",
+      "default": "#4c4c4c",
+      "component": "ColourPicker",
+      "editable": "virtual"
+    },
+    "420": {
+      "type": "boolean",
+      "title": "Show Bad Colours",
+      "default": false,
+      "component": "EditableValue",
+      "editable": "virtual"
+    },
+    "429": {
+      "type": "string",
+      "title": "Render Debug Ouput",
+      "default": "none",
+      "enum": ["none", "gradientX", "gradientY", "strength"],
+      "editable": "virtual",
+      "component": "Enumerated"
+    },
+    "430": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 8,
+      "default": 0,
+      "title": "Renderer Orientation Layer",
+      "component": "EditableValue",
+      "editable": "virtual"
+    },
+    "431": {
+      "type": "boolean",
+      "title": "Renderer Use Inhibition",
+      "component": "EditableValue",
+      "editable": "virtual"
+    },
+    "432": {
+      "type": "number",
+      "title": "Renderer Field Max",
+      "component": "EditableValue",
+      "editable": "virtual"
+    }
+  }
+}
