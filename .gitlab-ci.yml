@@ -51,6 +51,6 @@ publish:
     - docker
   script:
     - yarn pack
-    - echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > .npmrc
-    - yarn config set registry https://registry.npmjs.org
-    - yarn publish --new-version ${CI_COMMIT_TAG} --access public
+    - echo "//${CI_SERVER_HOST}/api/v4/projects/${CI_PROJECT_ID}/packages/npm/:_authToken=${CI_JOB_TOKEN}">.npmrc
+    - npm version --no-git-tag-version ${CI_COMMIT_TAG}
+    - npm publish
