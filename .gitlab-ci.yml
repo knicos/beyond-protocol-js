@@ -52,7 +52,7 @@ publish:
   script:
     - yarn pack
     - cd tests/package
-    - yarn
+    - yarn --update-checksums
     - node ./index.js
     - cd ../..
     - echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > .npmrc
