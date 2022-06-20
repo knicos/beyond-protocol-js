@@ -33,4 +33,9 @@ test:
   tags:
     - docker
   script:
-    - yarn test
+    - yarn test --ci --reporters=default --reporters=jest-junit
+  artifacts:
+    when: always
+    reports:
+      junit:
+        - junit.xml
