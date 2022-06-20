@@ -51,5 +51,6 @@ publish:
     - docker
   script:
     - yarn pack
-    - yarn config set registry https://registry.npmjs.org/:_authToken=${NPM_TOKEN}
+    - echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > .npmrc
+    - yarn config set registry https://registry.npmjs.org
     - yarn publish --new-version ${CI_COMMIT_TAG} --access public
