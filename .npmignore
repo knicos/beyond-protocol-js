@@ -4,3 +4,10 @@ tests
 .devcontainer
 .gitlab-ci.yml
 .gitignore
+.eslintignore
+.eslintrc.json
+*.tgz
+*.log
+.prettierignore
+jest.config.js
+tsconfig.json
