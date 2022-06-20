@@ -1,0 +1,9 @@
+{
+  "name": "test-pack",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@beyond/protocol": "../../beyond-protocol-v0.1.0.tgz"
+  }
+}

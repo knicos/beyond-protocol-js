@@ -6,10 +6,13 @@
 # Note that environment variables can be set in several places
 # See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
 stages:
+- static
 - build
 - test
+- publish
+
 sast:
-  stage: test
+  stage: static
 include:
 - template: Security/SAST.gitlab-ci.yml
 
@@ -39,3 +42,18 @@ test:
     reports:
       junit:
         - junit.xml
+
+publish:
+  stage: publish
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  tags:
+    - docker
+  script:
+    - yarn pack
+    - cd tests/package
+    - yarn
+    - node ./index.js
+    - cd ../..
+    - echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}' > .npmrc
+    - yarn publish --new-version ${CI_COMMIT_TAG} --access public
