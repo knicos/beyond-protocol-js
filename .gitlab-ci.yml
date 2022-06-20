@@ -6,8 +6,31 @@
 # Note that environment variables can be set in several places
 # See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
 stages:
+- build
 - test
 sast:
   stage: test
 include:
 - template: Security/SAST.gitlab-ci.yml
+
+
+image: node:16
+
+build:
+  stage: build
+  tags:
+    - docker
+  script:
+    - yarn install --frozen-lockfile
+    - yarn build
+  artifacts:
+    paths:
+    - dist
+    - node_modules
+
+test:
+  stage: test
+  tags:
+    - docker
+  script:
+    - yarn test

@@ -2,8 +2,8 @@ import ee, {Emitter} from 'event-emitter';
 import allOff from 'event-emitter/all-off';
 import {Peer} from './Peer';
 import msgpack from 'msgpack5';
-import { Channel } from './channel';
-import { DataPacket, StreamPacket, getData, DataType } from './packets';
+import { Channel, ChannelName, toChannel } from './channel';
+import { DataPacket, StreamPacket, getData, DataType, getCodec, getFrameCount } from './packets';
 const {encode, decode} = msgpack();
 
 interface IVideoState {
@@ -17,22 +17,21 @@ interface IVideoState {
 export interface FTLStream extends Emitter {};
 
 export class FTLStream {
-	peer: Peer;
-    uri: string;
+	readonly peer: Peer;
+    readonly uri: string;
     paused = false;
     active = true;
-    availableChannels = new Set<Channel>();
-    availableFrames = new Set<number>();
-    enabledChannels = new Map<string, IVideoState>();
-    found = false;
-    lastTimestamp = 0;
-    startTimestamp = 0;
-    data = new Map<Channel, any>();
-    fsdata = new Map<Channel, any>();
-    interval: NodeJS.Timer;
-    frame = 0;
-    frameset = 0;
-
+    private _availableChannels = new Set<Channel>();
+    private _availableFrames = new Set<[number, number]>();
+    private _enabledChannels = new Map<Channel, IVideoState>();
+    private found = false;
+    private lastTimestamp = 0;
+    private startTimestamp = 0;
+    private data = new Map<Channel, any>();
+    private fsdata = new Map<Channel, any>();
+    private interval: NodeJS.Timer;
+    private frame = 0;
+    private frameset = 0;
     private statsCount = 0;
     private latencySum = 0;
     private latency = 0;
@@ -40,83 +39,88 @@ export class FTLStream {
     private statsTime = Date.now();
 
 	constructor(peer: Peer, uri: string) {
-    this.peer = peer;
-    this.uri = uri;
+        this.peer = peer;
+        this.uri = uri;
 
-    this.peer.bind(uri, (latency: number, streampckg: StreamPacket, pckg: DataPacket) => {
-        if (this.paused || !this.active) {
-            return;
-        }
-
-        const [timestamp, fs, frame, channel] = streampckg;
-
-        const frameID = (fs << 8) | frame;
-        this.availableFrames.add(frameID);
-
-        if (fs !== this.frameset) return;
-
-        if (frame === 255) {
-            if (channel >= 64 && getData(pckg).length > 0) {
-              this._decodeFramesetData(channel, getData(pckg));
-              this.emit('fsdata', channel);
+        this.peer.bind(uri, (latency: number, streampckg: StreamPacket, pckg: DataPacket) => {
+            if (this.paused || !this.active) {
+                return;
             }
-        }
 
-        if (frame !== this.frame) return;
+            this.emit('raw', streampckg, pckg);
 
-        let rts: number;
-        if (channel === 0) {
-          rts = Date.now();
-        }
+            const [timestamp, fs, frame, channel, flags] = streampckg;
 
-        this.emit('raw', streampckg, pckg);
+            this._availableFrames.add([fs, frame]);
 
-        if (this.startTimestamp === 0) {
-            this.startTimestamp = timestamp;
-        }
-
-        if (timestamp !== this.lastTimestamp) {
-            this.emit('frameEnd', this.lastTimestamp);
-            this.lastTimestamp = timestamp;
-            this.emit('frameStart', this.lastTimestamp);
-        }
-
-        if (channel >= 32) {
-            if (channel >= 64 && getData(pckg).length > 0) {
-                this._decodeData(channel, getData(pckg));
+            if (flags & 0x1) {
+                this.emit('request', fs, frame, channel);
+                return;
             }
-            this.emit('packet', streampckg, pckg);
-        } else {
-            this.availableChannels.add(channel);
-            const id = `id-${fs}-${frame}-${channel}`;
 
-            if (this.enabledChannels.has(id)) {
+            if (fs !== this.frameset) return;
+
+            if (frame === 255) {
+                if (channel >= 64 && getData(pckg).length > 0) {
+                this._decodeFramesetData(channel, getData(pckg));
+                this.emit('fsdata', channel, this.fsdata.get(channel));
+                }
+            }
+
+            if (frame !== this.frame) return;
+
+            let rts: number;
+            if (channel === 0) {
+            rts = Date.now();
+            }
+
+            if (this.startTimestamp === 0) {
+                this.startTimestamp = timestamp;
+            }
+
+            if (timestamp !== this.lastTimestamp) {
+                this.emit('frameEnd', this.lastTimestamp);
+                this.lastTimestamp = timestamp;
+                this.emit('frameStart', this.lastTimestamp);
+            }
+
+            if (channel >= 32) {
                 this.emit('packet', streampckg, pckg);
+                if (channel >= 64 && getData(pckg).length > 0) {
+                    this._decodeData(channel, getData(pckg));
+                    this.emit('data', channel, this.data.get(channel));
+                }
+            } else {
+                this._availableChannels.add(channel);
+
+                if (this._enabledChannels.has(channel)) {
+                    this.emit('packet', streampckg, pckg);
+                    this.emit('video', timestamp, getCodec(pckg), getFrameCount(pckg), getData(pckg));
+                }
             }
+
+            if (channel === 2048) {
+            const procLatency = Date.now() - rts;
+            this.latencySum += latency + this.peer.latency + procLatency;
+            ++this.statsCount;
+            }
+        });
+
+        this.on('started', () => {
+        if (this.found) {
+            this.emit('ready');
         }
+        });
 
-        if (channel === 2048) {
-          const procLatency = Date.now() - rts;
-          this.latencySum += latency + this.peer.latency + procLatency;
-          ++this.statsCount;
-        }
-    });
+        const disconCB = () => {
+        this.found = false;
+        this.stop();
+        };
+        this.peer.on('disconnect', disconCB);
 
-    this.on('started', () => {
-      if (this.found) {
-        this.emit('ready');
-      }
-    });
-
-    const disconCB = () => {
-      this.found = false;
-      this.stop();
-    };
-    this.peer.on('disconnect', disconCB);
-
-    this.on('stop', () => {
-      this.peer.off('disconnect', disconCB);
-    })
+        this.on('stop', () => {
+        this.peer.off('disconnect', disconCB);
+        })
 	}
 
     getStatistics() {
@@ -175,7 +179,6 @@ export class FTLStream {
     destroy() {
       this.stop();
       allOff(this);
-      this.peer = null;
     }
 
     start() {
@@ -186,7 +189,7 @@ export class FTLStream {
 
       this.interval = setInterval(() => {
         if (this.active && this.found) {
-            this.enabledChannels.forEach((value, key) => {
+            this._enabledChannels.forEach((value, key) => {
                 this.post([1,value.stream,255,value.channel,1],[255,7,35,255,0,Buffer.alloc(0)]);
             });
         }
@@ -211,7 +214,7 @@ export class FTLStream {
     }
 
     keyframe() {
-      this.enabledChannels.forEach((value, key) => {
+      this._enabledChannels.forEach((value, key) => {
         this.post([1,value.stream,255,value.channel,5],[255,7,35,255,0,Buffer.alloc(0)]);
       });
     }
@@ -222,27 +225,50 @@ export class FTLStream {
 
     enableFrame(stream: number, frame: number) {
         if (this.frame !== frame || this.frameset !== stream) {
-            this.enabledChannels.clear();
+            this._enabledChannels.clear();
             this.data.clear();
-            this.availableChannels.clear();
+            this._availableChannels.clear();
         }
         this.frame = frame;
         this.frameset = stream;
     }
 
-    enableVideo(stream: number, frame: number, channel: Channel) {
+    enableVideo(stream: number, frame: number, channel: Channel | ChannelName) {
+        const c = toChannel(channel);
         this.enableFrame(stream, frame);
-        const id = `id-${stream}-${frame}-${channel}`;
-        this.enabledChannels.set(id, { rxcount: 0, stream, frame, channel });
+        this._enabledChannels.set(c, { rxcount: 0, stream, frame, channel: c });
     }
 
-    disableVideo(stream: number, frame: number, channel: number) {
-        const id = `id-${stream}-${frame}-${channel}`;
-        this.enabledChannels.delete(id);
+    disableVideo(stream: number, frame: number, channel: Channel) {
+        this._enabledChannels.delete(channel);
     }
 
-    set(channel: Channel, value: unknown) {
-        this.post([1, this.frameset , this.frame, channel, 0],[103,7,1,0,0, encode(value) as unknown as Buffer]);
+    activeFrame() {
+        return [this.frameset, this.frame];
+    }
+
+    availableFrames() {
+        return new Set(this._availableFrames);
+    }
+
+    availableChannels() {
+        return new Set(this._availableChannels);
+    }
+
+    enabledVideo() {
+        return new Set(this._enabledChannels.keys());
+    }
+
+    isEnabled(channel: Channel | ChannelName) {
+        return this._enabledChannels.has(toChannel(channel));
+    }
+
+    set(channel: Channel | ChannelName, value: unknown) {
+        this.post([1, this.frameset , this.frame, toChannel(channel), 0],[103,7,1,0,0, encode(value) as unknown as Buffer]);
+    }
+
+    get(channel: Channel | ChannelName) {
+        return this.data.get(toChannel(channel));
     }
 
     getWidth(): number {

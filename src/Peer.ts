@@ -44,6 +44,7 @@ export class Peer {
     events = {};
     callbacks = {};
     cbid = 0;
+    server = false;
 
     latency = 0;
 
@@ -58,8 +59,9 @@ export class Peer {
 
     static uuid: string;
 
-    constructor(ws?: WebSocketConnection) {
+    constructor(ws?: WebSocketConnection, server = false) {
         this.sock = ws;
+        this.server = server;
         if (!ws) return;
 
         const message = (raw) => {
@@ -107,17 +109,22 @@ export class Peer {
             this.sock.onmessage = message;
             this.sock.onclose = close;
             this.sock.onopen = () => {
-                this.send("__handshake__", kMagic, kVersion, [my_uuid]);
+                if (server) {
+                    this.sendHandshake();
+                }
             }
         //else peer is being used by server
         }else{
             this.sock.on("message", message);
             this.sock.on("close", close);
             this.sock.on("error", error);
+            if (server) {
+                this.sendHandshake();
+            }
         }
     
         this.bind("__handshake__", (magic: number, version: number, id: Buffer[]) => this._handshake(magic, version, id));
-        this.send("__handshake__", kMagic, kVersion, [my_uuid]);
+        //this.send("__handshake__", kMagic, kVersion, [my_uuid]);
     }
 
     getStatistics() {
@@ -131,12 +138,18 @@ export class Peer {
         return this.lastStats;
     }
 
+    sendHandshake() {
+        this.send("__handshake__", kMagic, kVersion, [my_uuid]);
+    }
+
     private _handshake(magic: number, version: number, id: Buffer[]) {
         if (magic == kMagic) {
-            console.log("Handshake received");
             this.status = kConnected;
             this.id = id[0];
             this.string_id = id[0].toString('hex');
+            if (!this.server) {
+                this.sendHandshake();
+            }
             this.emit("connect", this);
         } else {
             console.log("Magic does not match");
@@ -243,15 +256,18 @@ export class Peer {
      * @param {function} cb Callback to receive return value as argument
      * @param {...} args Any number of arguments to also pass to remote procedure
      */
-    rpc(name: string, cb: (r: unknown) => void, ...args: unknown[]) {
-        const id = this.cbid++;
-        this.callbacks[id] = cb;
-    
-        try {
-            this.sock.send(encode([0, id, name, args]));
-        } catch(e) {
-            this.close();
-        }
+    rpc(name: string, ...args: unknown[]) {
+        return new Promise((resolve, reject) => {
+            const id = this.cbid++;
+            this.callbacks[id] = (r) => resolve(r);
+        
+            try {
+                this.sock.send(encode([0, id, name, args]));
+            } catch(e) {
+                this.close();
+                reject();
+            }
+        });
     }
 
     /**
