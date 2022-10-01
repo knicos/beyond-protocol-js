@@ -175,23 +175,25 @@ export class Peer {
                 const res = this.bindings[name].apply(this, args);
                 if (res instanceof Promise) {
                     res.then(r => {
-                        this.sock.send(encode([1,id,name,r]));
+                        this.sock.send(encode([1,id,null,r]));
                     });
                 } else {
-                    this.sock.send(encode([1,id,name,res]));
+                    this.sock.send(encode([1,id,null,res]));
                 }
             } catch(e) {
-                console.error("Could to dispatch or return call", e);
-                this.close();
+                // console.error("Could to dispatch or return call", e);
+                // this.close();
+                this.sock.send(encode([1,id,e.toString(),null]));
             }
         } else if (name in this.proxies) {
             //console.log("Proxy for:", name, id);
             args.unshift((res: unknown) => {
                 try {
-                    this.sock.send(encode([1,id,name,res]));
+                    this.sock.send(encode([1,id,null,res]));
                 } catch(e) {
-                    console.log("ERROR")
-                    this.close();
+                    // console.log("ERROR")
+                    // this.close();
+                    this.sock.send(encode([1,id,e.toString(),null]));
                 }
             });
             this.proxies[name].apply(this, args);
