@@ -45,6 +45,7 @@ export class Peer {
     callbacks = {};
     cbid = 0;
     server = false;
+    sendCount = 0;
 
     latency = 0;
 
@@ -142,6 +143,17 @@ export class Peer {
         this.send("__handshake__", kMagic, kVersion, [my_uuid]);
     }
 
+    isBuffering(): boolean {
+        return this.sendCount > 0;
+    }
+
+    private _send(msg: Buffer | ReturnType<typeof encode>) {
+        ++this.sendCount;
+        this.sock.send(msg, () => {
+            --this.sendCount;
+        });
+    }
+
     private _handshake(magic: number, version: number, id: Buffer[]) {
         if (magic == kMagic) {
             this.status = kConnected;
@@ -175,25 +187,25 @@ export class Peer {
                 const res = this.bindings[name].apply(this, args);
                 if (res instanceof Promise) {
                     res.then(r => {
-                        this.sock.send(encode([1,id,null,r]));
+                        this._send(encode([1,id,null,r]));
                     });
                 } else {
-                    this.sock.send(encode([1,id,null,res]));
+                    this._send(encode([1,id,null,res]));
                 }
             } catch(e) {
                 // console.error("Could to dispatch or return call", e);
                 // this.close();
-                this.sock.send(encode([1,id,e.toString(),null]));
+                this._send(encode([1,id,e.toString(),null]));
             }
         } else if (name in this.proxies) {
             //console.log("Proxy for:", name, id);
             args.unshift((res: unknown) => {
                 try {
-                    this.sock.send(encode([1,id,null,res]));
+                    this._send(encode([1,id,null,res]));
                 } catch(e) {
                     // console.log("ERROR")
                     // this.close();
-                    this.sock.send(encode([1,id,e.toString(),null]));
+                    this._send(encode([1,id,e.toString(),null]));
                 }
             });
             this.proxies[name].apply(this, args);
@@ -264,7 +276,7 @@ export class Peer {
             this.callbacks[id] = (r) => resolve(r);
         
             try {
-                this.sock.send(encode([0, id, name, args]));
+                this._send(encode([0, id, name, args]));
             } catch(e) {
                 this.close();
                 reject();
@@ -280,7 +292,7 @@ export class Peer {
      */
     send(name: string, ...args: unknown[]) {
         try {
-            this.sock.send(encode([0, name, args]));
+            this._send(encode([0, name, args]));
         } catch(e) {
             this.close();
         }
@@ -288,7 +300,7 @@ export class Peer {
 
     sendB(name: string, args: unknown[]) {
         try {
-            this.sock.send(encode([0, name, args]));
+            this._send(encode([0, name, args]));
         } catch(e) {
             this.close();
         }
