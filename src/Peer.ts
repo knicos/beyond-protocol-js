@@ -173,9 +173,9 @@ export class Peer {
             txRatio: (this.txBytes > 0) ? this.txRequested / this.txBytes : 0.0,
             duration,
         };
+        this.txRequested -= this.txBytes;
         this.txBytes = 0;
         this.rxBytes = 0;
-        this.txRequested = 0;
         this.lastStatsCall = time;
     }
 
