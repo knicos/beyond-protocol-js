@@ -1,10 +1,15 @@
 import {Peer} from '../src/Peer';
 import WebSocket from 'ws';
 
+function wait(ms: number) {
+    return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
 describe("Peer class", () => {
     let clientPeer: Peer;
     let serverPeer: Peer;
     let wss: WebSocket.Server;
+    let conn: WebSocket;
 
     beforeEach(async () => {
         return new Promise((resolve) => {
@@ -14,7 +19,7 @@ describe("Peer class", () => {
                 serverPeer = new Peer(ws, true);
             });
 
-            const conn = new WebSocket('ws://127.0.0.1:9003');
+            conn = new WebSocket('ws://127.0.0.1:9003');
             clientPeer = new Peer(conn);
             clientPeer.on('connect', () => {
                 resolve(true);
@@ -23,9 +28,9 @@ describe("Peer class", () => {
     });
 
     afterEach(async () => {
+        await clientPeer.close();
+        await serverPeer.close();
         return new Promise((resolve) => {
-            clientPeer.close();
-            serverPeer.close();
             wss.close(() => {
                 resolve(true);
             });
@@ -90,5 +95,23 @@ describe("Peer class", () => {
         });
 
         expect.assertions(3);
+    });
+
+    it("can generate statistics", async () => {
+        expect(clientPeer).toBeTruthy();
+        expect(serverPeer).toBeTruthy();
+
+        await new Promise((resolve) => {
+            serverPeer.bind("test_rpc", (value) => {
+                expect(value).toBe(50);
+                resolve(true);
+            });
+    
+            clientPeer.send("test_rpc", 50);
+        });
+
+        await wait(2000);
+
+        expect(serverPeer.getStatistics().txTotal).toBeGreaterThan(0);
     });
 });
